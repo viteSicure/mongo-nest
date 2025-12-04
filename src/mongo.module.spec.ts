@@ -150,5 +150,51 @@ describe('Mongo module', () => {
                 expect(fooProvider.mongoClient).toBeDefined();
             });
         });
+
+        describe('connection fails', () => {
+            it('should create a null mongo client provider instead of throwing exception when throwOnConnectionFailure parameter is false', async () => {
+                const module = await Test.createTestingModule({
+                    providers: [CustomProvider],
+                    imports: [
+                        MongoModule.forRootAsync(
+                            {
+                                useFactory: async () => ({
+                                    uri: 'mongodb://net_exists',
+                                    mongoOptions: {
+                                        serverSelectionTimeoutMS: 100,
+                                    },
+                                }),
+                            },
+                            'foo',
+                            false,
+                        ),
+                    ],
+                }).compile();
+
+                const mongoClient = await module.resolve(getMongoToken('foo'));
+                expect(mongoClient).toBeNull();
+            });
+
+            it('should throw when connection fails and throwOnConnectionFailure parameter is not false', async () => {
+                const testingModuleBuilder = Test.createTestingModule({
+                    providers: [CustomProvider],
+                    imports: [
+                        MongoModule.forRootAsync(
+                            {
+                                useFactory: async () => ({
+                                    uri: 'mongodb://net_exists',
+                                    mongoOptions: {
+                                        serverSelectionTimeoutMS: 100,
+                                    },
+                                }),
+                            },
+                            'foo',
+                        ),
+                    ],
+                });
+
+                await expect(async () => await testingModuleBuilder.compile()).rejects.toThrow();
+            });
+        });
     });
 });

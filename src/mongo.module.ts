@@ -50,7 +50,11 @@ export class MongoModule implements OnApplicationBootstrap, OnApplicationShutdow
         };
     }
 
-    static forRootAsync(options: MongoModuleAsyncOptions, mongoName = DEFAULT_MONGO_NAME): DynamicModule {
+    static forRootAsync(
+        options: MongoModuleAsyncOptions,
+        mongoName = DEFAULT_MONGO_NAME,
+        throwOnConnectionFailure = true,
+    ): DynamicModule {
         const ConnectionNameProvider: Provider = {
             provide: MONGO_NAME_TOKEN,
             useValue: mongoName,
@@ -60,7 +64,16 @@ export class MongoModule implements OnApplicationBootstrap, OnApplicationShutdow
             provide: this.getMongoToken(mongoName),
             useFactory: async (options: MongoOptions): Promise<any> => {
                 const mongoOptions = options.mongoOptions || {};
-                return await MongoModule.clientOn(options.uri, mongoOptions).connect();
+                try {
+                    return await MongoModule.clientOn(options.uri, mongoOptions).connect();
+                } catch (error) {
+                    if (!throwOnConnectionFailure) {
+                        MongoModule.logger.warn(`Mongo connection failed but is optional: ${error.message}`);
+                        return null;
+                    } else {
+                        throw error;
+                    }
+                }
             },
             inject: [this.getOptionProviderToken(mongoName)],
         };
